@@ -2,95 +2,124 @@ package db;
 
 import java.sql.Connection;
 import java.sql.Statement;
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
+import java.sql.SQLException;
 
 /**
- *
- * @author User
+ * Database table creation for Wellness System
+ * Creates all necessary tables for staff, appointments, and feedback
  */
-
-// Contains SQL code to create tables
 public class CreateTables {
+    
     public static void main(String[] args) {
-        try (
-            Connection conn = DBConnection.getConnection();
-            Statement stmt = conn.createStatement()
-        ) {
+        createAllTables();
+    }
+    
+    /**
+     * Create all database tables
+     */
+    public static void createAllTables() {
+        try (Connection conn = DBConnection.getConnection();
+             Statement stmt = conn.createStatement()) {
+            
             // Create Staff table
-            String createStaff = "CREATE TABLE Staff (" +
-                "id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, " +
-                "name VARCHAR(100), " +
-                "role VARCHAR(50), " + // admin, counselor, support
-                "username VARCHAR(50), " +
-                "password VARCHAR(100))";
-
-            // Create Students table
-            String createStudents = "CREATE TABLE Students (" +
-                "id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, " +
-                "name VARCHAR(100), " +
-                "email VARCHAR(100), " +
-                "student_number VARCHAR(50))"; 
-
-            // Create Counselors table
-            String createCounselors = "CREATE TABLE Counselors (" +
-                "id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, " +
-                "name VARCHAR(100), " +
-                "specialization VARCHAR(100), " +
-                //"availability VARCHAR(100), " +
-                "active BOOLEAN)";
-
-            // Create Programs table
-            String createPrograms = "CREATE TABLE Programs (" +
-                "id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, " +
-                "title VARCHAR(100), " +
-                "description VARCHAR(255), " +
-                "counselor_id INT, " +
-                "FOREIGN KEY (counselor_id) REFERENCES Counselors(id))";
-
-            // Create StudentPrograms table (many-to-many: students <-> programs)
-            String createStudentPrograms = "CREATE TABLE StudentPrograms (" +
-                "id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, " +
-                "student_id INT, " +
-                "program_id INT, " +
-                "enrolled_on DATE, " +
-                "FOREIGN KEY (student_id) REFERENCES Students(id), " +
-                "FOREIGN KEY (program_id) REFERENCES Programs(id))";
+            createStaffTable(stmt);
 
             // Create Appointments table
-            String createAppointments = "CREATE TABLE Appointments (" +
-                "id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, " +
-                "student_id INT, " +
-                "counselor_id INT, " +
-                "date DATE, " +
-                "time TIME, " +
-                "status VARCHAR(50), " +
-                "FOREIGN KEY (student_id) REFERENCES Students(id), " +
-                "FOREIGN KEY (counselor_id) REFERENCES Counselors(id))";
+            createAppointmentsTable(stmt);
 
             // Create Feedback table
-            String createFeedback = "CREATE TABLE Feedback (" +
-                "id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, " +
-                "student_id INT, " +
-                "rating INT, " +
-                "comments VARCHAR(255), " +
-                "FOREIGN KEY (student_id) REFERENCES Students(id))";
-
-            // Execute all table creation statements in correct order
-            stmt.executeUpdate(createStaff);
-            stmt.executeUpdate(createStudents);
-            stmt.executeUpdate(createCounselors);
-            stmt.executeUpdate(createPrograms);
-            stmt.executeUpdate(createStudentPrograms);
-            stmt.executeUpdate(createAppointments);
-            stmt.executeUpdate(createFeedback);
-
-            System.out.println("✅ All tables created successfully.");
-
-        } catch (Exception e) {
+            createFeedbackTable(stmt);
+            
+            System.out.println("✅ All tables created successfully!");
+            
+        } catch (SQLException e) {
+            System.err.println("Error creating tables: " + e.getMessage());
             e.printStackTrace();
         }
     }
-}
+    
+    /**
+     * Create Staff table
+     */
+    private static void createStaffTable(Statement stmt) throws SQLException {
+        String sql = "CREATE TABLE staff (" +
+            "id INT PRIMARY KEY," +
+            "name VARCHAR(100) NOT NULL," +
+            "password VARCHAR(100) NOT NULL," +
+            "role VARCHAR(50) NOT NULL," +
+            "specialization VARCHAR(100)," +
+            "is_available BOOLEAN DEFAULT true," +
+            "created_date TIMESTAMP DEFAULT CURRENT TIMESTAMP" +
+            ")";
+        
+        try {
+            stmt.execute(sql);
+            System.out.println("✅ Staff table created");
+        } catch (SQLException e) {
+            if (e.getSQLState().equals("X0Y32")) {
+                System.out.println("Staff table already exists");
+            } else {
+                throw e;
+            }
+        }
+    }
+    
+    /**
+     * Create Appointments table
+     */
+    private static void createAppointmentsTable(Statement stmt) throws SQLException {
+        String sql = "CREATE TABLE appointments (" +
+            "id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY (START WITH 1, INCREMENT BY 1)," +
+            "student_name VARCHAR(100) NOT NULL," +
+            "counselor_id INT NOT NULL," +
+            "appointment_date DATE NOT NULL," +
+            "appointment_time TIME NOT NULL," +
+            "status VARCHAR(20) DEFAULT 'Scheduled'," +
+            "comments CLOB," +
+            "created_by_id INT NOT NULL," +
+            "created_date TIMESTAMP DEFAULT CURRENT TIMESTAMP," +
+            "FOREIGN KEY (counselor_id) REFERENCES staff(id)," +
+            "FOREIGN KEY (created_by_id) REFERENCES staff(id)" +
+            ")";
+        
+        try {
+            stmt.execute(sql);
+            System.out.println("✅ Appointments table created");
+        } catch (SQLException e) {
+            if (e.getSQLState().equals("X0Y32")) {
+                System.out.println("Appointments table already exists");
+            } else {
+                throw e;
+            }
+        }
+    }
+    
+    /**
+     * Create Feedback table
+     */
+    private static void createFeedbackTable(Statement stmt) throws SQLException {
+        String sql = "CREATE TABLE feedback (" +
+            "id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY (START WITH 1, INCREMENT BY 1)," +
+            "student_name VARCHAR(100) NOT NULL," +
+            "counselor_id INT NOT NULL," +
+            "feedback_date DATE NOT NULL," +
+            "rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5)," +
+            "feedback_text CLOB," +
+            "created_by_id INT NOT NULL," +
+            "created_date TIMESTAMP DEFAULT CURRENT TIMESTAMP," +
+            "FOREIGN KEY (counselor_id) REFERENCES staff(id)," +
+            "FOREIGN KEY (created_by_id) REFERENCES staff(id)" +
+            ")";
+        
+        try {
+            stmt.execute(sql);
+            System.out.println("✅ Feedback table created");
+        } catch (SQLException e) {
+            if (e.getSQLState().equals("X0Y32")) {
+                System.out.println("Feedback table already exists");
+            } else {
+                throw e;
+            }
+        }
+    }
+} 
