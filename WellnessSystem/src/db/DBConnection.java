@@ -3,49 +3,66 @@ package db;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-//import org.apache.derby.iapi.jdbc.JDBC;
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 
 /**
- *
- * @author User
+ * Database connection manager for JavaDB (Apache Derby)
+ * Uses local file-based database storage
  */
-
-// 	Handles connecting to the JavaDB database
 public class DBConnection {
-
-    public static final String DRIVER = "org.apache.derby.jdc.EmbeddedDriver";
+    private static final String DB_URL = "jdbc:derby:WellnessDB;create=true";
+    private static final String DRIVER = "org.apache.derby.jdbc.EmbeddedDriver";
     
+    private static Connection connection = null;
     
-    // JDBC_URL connects to an apache derby database
-    // database name = wellnessDB
-    // create = true means that the db will be created if it does not already exist
-    public static final String JDBC_URL = "jdbc:derby:wellnessDB;create=true";
-
-    static Connection getConnection() {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
-    }
-    
-    // connection object
-    Connection con;
-    
-    //constructor
-    public DBConnection(){
-    }
-    
-    // mehod to connect to the database
-    public void connect() throws ClassNotFoundException{
-        try{
-            Class.forName(DRIVER);
-            this.con = DriverManager.getConnection(JDBC_URL);
-            if (this.con != null){
-                System.out.println("Database connection successfull");
+    /**
+     * Get database connection
+     */
+    public static Connection getConnection() throws SQLException {
+        if (connection == null || connection.isClosed()) {
+            try {
+                // Load the Derby driver
+                Class.forName(DRIVER);
+                // Print DB path for debug
+                String dbPath = new java.io.File("WellnessDB").getAbsolutePath();
+                System.out.println("[DEBUG] Derby DB absolute path: " + dbPath);
+                // Create connection
+                connection = DriverManager.getConnection(DB_URL);
+                System.out.println("✅ Database connected successfully");
+            } catch (ClassNotFoundException e) {
+                throw new SQLException("Derby driver not found: " + e.getMessage());
             }
-        } catch (SQLException ex){
-            ex.printStackTrace();
+        }
+        return connection;
+    }
+    
+    /**
+     * Close database connection
+     */
+    public static void closeConnection() {
+        try {
+            if (connection != null && !connection.isClosed()) {
+                connection.close();
+                System.out.println("✅ Database connection closed");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error closing database connection: " + e.getMessage());
         }
     }
-}
+    
+    /**
+     * Shutdown Derby database
+     */
+    public static void shutdownDatabase() {
+        try {
+            closeConnection();
+            DriverManager.getConnection("jdbc:derby:;shutdown=true");
+        } catch (SQLException e) {
+            // Expected exception when shutting down Derby
+            if (e.getSQLState().equals("XJ015")) {
+                System.out.println("✅ Database shutdown successfully");
+            } else {
+                System.err.println("Error shutting down database: " + e.getMessage());
+            }
+        }
+    }
+} 

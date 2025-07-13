@@ -1,0 +1,40 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "FeedbackInterface",
+            "request": "launch",
+            "mainClass": "wellnesssystem.view.FeedbackInterface",
+            "projectName": "WellnessSystem_73c5b719"
+        },
+        {
+            "type": "java",
+            "name": "WellnessSystem",
+            "request": "launch",
+            "mainClass": "wellnesssystem.WellnessSystem",
+            "projectName": "WellnessSystem_73c5b719",
+            "classpath": [
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/src/lib/derby.jar",
+                "${workspaceFolder}/src/lib/derbyshared.jar",
+                "${workspaceFolder}/src/lib/derbytools.jar"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "java",
+            "name": "Launch Wellness System",
+            "request": "launch",
+            "mainClass": "wellnesssystem.WellnessSystem",
+            "projectName": "WellnessSystem",
+            "classpath": [
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/src/lib/derby.jar",
+                "${workspaceFolder}/src/lib/derbyshared.jar",
+                "${workspaceFolder}/src/lib/derbytools.jar"
+            ],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+} 
