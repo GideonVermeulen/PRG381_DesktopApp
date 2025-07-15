@@ -2,6 +2,7 @@ package view;
 
 import main.model.*;
 import main.dao.FeedbackDAO;
+import main.controller.AppController;
 import javax.swing.*;
 import javax.swing.table.*;
 import java.awt.*;
@@ -10,7 +11,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class FeedbackPanel extends JPanel {
-    private FeedbackDAO feedbackDAO = new FeedbackDAO();
+    private AppController controller = new AppController();
     private java.util.List<String> counselorNames;
     private JTable table;
     private DefaultTableModel tableModel;
@@ -64,12 +65,12 @@ public class FeedbackPanel extends JPanel {
         tableModel.setRowCount(0);
         java.util.List<Feedback> filtered;
         if (user.getRole().equals("Counselor")) {
-            filtered = feedbackDAO.getFeedbackForCounselor(user.getName());
+            filtered = controller.getFeedbackForCounselor(user.getName());
         } else if (user.getRole().equals("Receptionist")) {
             // Receptionist cannot view feedback
             return;
         } else {
-            filtered = feedbackDAO.getAllFeedback();
+            filtered = controller.getAllFeedback();
         }
         for (Feedback f : filtered) {
             tableModel.addRow(new Object[]{f.getId(), f.getStudentName(), f.getCounselorName(), f.getDate(), f.getRating(), f.getComments()});
@@ -80,14 +81,14 @@ public class FeedbackPanel extends JPanel {
         FeedbackForm form = new FeedbackForm(null, counselorNames);
         int res = JOptionPane.showConfirmDialog(this, form, "Add Feedback", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (res == JOptionPane.OK_OPTION) {
-            int nextId = feedbackDAO.getAllFeedback().stream().mapToInt(Feedback::getId).max().orElse(0) + 1;
+            int nextId = controller.getNextFeedbackId();
             Feedback f = form.getFeedback(nextId);
             String err = validateFeedback(f);
             if (err != null) {
                 JOptionPane.showMessageDialog(this, err);
                 return;
             }
-            feedbackDAO.addFeedback(f);
+            controller.addFeedback(f);
             refreshTable();
         }
     }
@@ -96,7 +97,7 @@ public class FeedbackPanel extends JPanel {
         int row = table.getSelectedRow();
         if (row == -1) return;
         int id = (int) tableModel.getValueAt(row, 0);
-        Feedback orig = feedbackDAO.getAllFeedback().stream().filter(f -> f.getId() == id).findFirst().orElse(null);
+        Feedback orig = controller.getAllFeedback().stream().filter(f -> f.getId() == id).findFirst().orElse(null);
         if (orig == null) return;
         FeedbackForm form = new FeedbackForm(orig, counselorNames);
         int res = JOptionPane.showConfirmDialog(this, form, "Edit Feedback", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
@@ -107,7 +108,7 @@ public class FeedbackPanel extends JPanel {
                 JOptionPane.showMessageDialog(this, err);
                 return;
             }
-            feedbackDAO.updateFeedback(updated);
+            controller.updateFeedback(updated);
             refreshTable();
         }
     }
@@ -116,7 +117,9 @@ public class FeedbackPanel extends JPanel {
         int row = table.getSelectedRow();
         if (row == -1) return;
         int id = (int) tableModel.getValueAt(row, 0);
-        feedbackDAO.deleteFeedback(id);
+        int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete this feedback?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) return;
+        controller.deleteFeedback(id);
         refreshTable();
     }
 

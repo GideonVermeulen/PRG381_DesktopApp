@@ -21,4 +21,17 @@ public class DBConnection {
             try { c.close(); } catch (Exception ignored) {}
         }
     }
+
+    // TEMP: Drop all main tables for a clean reset
+    public static void dropAllTables() {
+        try (Connection conn = getConnection(); Statement st = conn.createStatement()) {
+            st.executeUpdate("DROP TABLE Feedback");
+        } catch (Exception e) { /* ignore if not exist */ }
+        try (Connection conn = getConnection(); Statement st = conn.createStatement()) {
+            st.executeUpdate("DROP TABLE Appointments");
+        } catch (Exception e) { /* ignore if not exist */ }
+        try (Connection conn = getConnection(); Statement st = conn.createStatement()) {
+            st.executeUpdate("DROP TABLE Counselors");
+        } catch (Exception e) { /* ignore if not exist */ }
+    }
 } 

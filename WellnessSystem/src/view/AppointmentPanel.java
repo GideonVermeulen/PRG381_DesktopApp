@@ -2,6 +2,7 @@ package view;
 
 import main.model.*;
 import main.dao.AppointmentDAO;
+import main.controller.AppController;
 import javax.swing.*;
 import javax.swing.table.*;
 import java.awt.*;
@@ -16,6 +17,7 @@ public class AppointmentPanel extends JPanel {
     private DefaultTableModel tableModel;
     private User user;
     private java.util.List<String> counselorNames;
+    private AppController controller = new AppController();
 
     public AppointmentPanel(User user, java.util.List<String> counselorNames) {
         this.user = user;
@@ -87,7 +89,11 @@ public class AppointmentPanel extends JPanel {
     }
 
     private void addAppointment() {
-        AppointmentForm form = new AppointmentForm(null, counselorNames);
+        java.util.List<String> availableCounselorNames = new ArrayList<>();
+        for (User u : controller.getAvailableCounselors()) {
+            availableCounselorNames.add(u.getName());
+        }
+        AppointmentForm form = new AppointmentForm(null, availableCounselorNames);
         int res = JOptionPane.showConfirmDialog(this, form, "Add Appointment", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (res == JOptionPane.OK_OPTION) {
             Appointment a = form.getAppointment(nextId());
@@ -111,7 +117,15 @@ public class AppointmentPanel extends JPanel {
         int id = (int) tableModel.getValueAt(row, 0);
         Appointment orig = appointments.stream().filter(a -> a.getId() == id).findFirst().orElse(null);
         if (orig == null) return;
-        AppointmentForm form = new AppointmentForm(orig, counselorNames);
+        java.util.List<String> availableCounselorNames = new ArrayList<>();
+        for (User u : controller.getAvailableCounselors()) {
+            availableCounselorNames.add(u.getName());
+        }
+        // Always include the currently assigned counselor in the dropdown (even if unavailable)
+        if (orig != null && !availableCounselorNames.contains(orig.getCounselorName())) {
+            availableCounselorNames.add(orig.getCounselorName());
+        }
+        AppointmentForm form = new AppointmentForm(orig, availableCounselorNames);
         int res = JOptionPane.showConfirmDialog(this, form, "Edit Appointment", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (res == JOptionPane.OK_OPTION) {
             Appointment updated = form.getAppointment(id);
@@ -134,10 +148,9 @@ public class AppointmentPanel extends JPanel {
         if (row == -1) return;
         int id = (int) tableModel.getValueAt(row, 0);
         int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete this appointment?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
-        if (confirm == JOptionPane.YES_OPTION) {
-            dao.deleteAppointment(id);
-            refreshTable();
-        }
+        if (confirm != JOptionPane.YES_OPTION) return;
+        dao.deleteAppointment(id);
+        refreshTable();
     }
 
     private int nextId() {
