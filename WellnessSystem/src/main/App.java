@@ -2,6 +2,7 @@ package main;
 
 import main.model.*;
 import main.dao.UserDAO;
+import main.db.DBConnection;
 import view.Dashboard;
 import javax.swing.*;
 import java.awt.*;

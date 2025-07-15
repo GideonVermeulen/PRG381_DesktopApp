@@ -15,6 +15,7 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import main.controller.AppController;
 
 public class Dashboard extends JFrame {
     private final Color purple = new Color(120, 80, 255);
@@ -37,20 +38,16 @@ public class Dashboard extends JFrame {
     public Dashboard(User user) {
         setTitle("Wellness System - " + user.getRole() + " Dashboard");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(900, 600);
+        setSize(1000, 750);
+        setMinimumSize(new Dimension(900, 600));
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
         getContentPane().setBackground(Color.WHITE);
 
-        // Demo data
-        appointments.add(new Appointment(1, "Alice", "Dr. Smith", "2024-06-01", "09:00", "Scheduled", ""));
-        appointments.add(new Appointment(2, "Bob", "Dr. Jones", "2024-06-02", "10:00", "Completed", "Follow-up needed"));
-        appointments.add(new Appointment(3, "Charlie", "Dr. Smith", "2024-06-03", "11:00", "Scheduled", ""));
-        feedbackList.add(new Feedback(1, "Alice", "Dr. Smith", "2024-06-01", 5, "Great session!"));
-        feedbackList.add(new Feedback(2, "Bob", "Dr. Jones", "2024-06-02", 4, "Helpful advice."));
-        feedbackList.add(new Feedback(3, "Charlie", "Dr. Smith", "2024-06-03", 3, "Okay experience."));
+        AppController controller = new AppController();
 
-        // Header
+        System.out.println("Dashboard constructed for: " + user.getRole() + ", name: " + user.getName());
+        // Header (always present for all roles)
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(Color.WHITE);
         JLabel welcome = new JLabel("Welcome, " + user.getName() + " (" + user.getRole() + ")");
@@ -72,27 +69,88 @@ public class Dashboard extends JFrame {
         logoutPanel.setBackground(Color.WHITE);
         logoutPanel.add(logoutBtn);
         headerPanel.add(logoutPanel, BorderLayout.EAST);
-        add(headerPanel, BorderLayout.NORTH);
+        // Only add headerPanel once, always at BorderLayout.NORTH
+        getContentPane().add(headerPanel, BorderLayout.NORTH);
 
+        // --- Counselor availability toggle ---
+        JPanel availCard = null;
+        if (user.getRole().equals("Counselor")) {
+            availCard = new JPanel();
+            availCard.setLayout(new BorderLayout());
+            availCard.setBackground(Color.WHITE);
+            availCard.setBorder(BorderFactory.createLineBorder(purple, 2));
+            availCard.setMaximumSize(new Dimension(350, 80));
+            availCard.setPreferredSize(new Dimension(350, 80));
+            JPanel innerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
+            innerPanel.setBackground(Color.WHITE);
+            Counselor self = null;
+            for (User u : controller.getStaffByRole("Counselor")) {
+                if (u.getId() == user.getId() && u instanceof Counselor) {
+                    self = (Counselor) u;
+                    break;
+                }
+            }
+            JLabel statusLabel = new JLabel();
+            statusLabel.setFont(cardDescFont);
+            statusLabel.setForeground(purple);
+            JToggleButton availToggle = new JToggleButton();
+            availToggle.setFont(buttonFont);
+            availToggle.setBackground(purple);
+            availToggle.setForeground(Color.WHITE);
+            availToggle.setFocusPainted(false);
+            availToggle.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 20));
+            availToggle.setOpaque(true);
+            availToggle.setContentAreaFilled(false);
+            availToggle.setUI(new javax.swing.plaf.basic.BasicToggleButtonUI() {
+                @Override
+                public void paint(Graphics g, JComponent c) {
+                    AbstractButton b = (AbstractButton) c;
+                    g.setColor(purple);
+                    g.fillRect(0, 0, c.getWidth(), c.getHeight());
+                    super.paint(g, c);
+                }
+            });
+            availToggle.addChangeListener(e -> {
+                availToggle.setBackground(purple);
+                availToggle.setForeground(Color.WHITE);
+            });
+            if (self != null && self.isAvailable()) {
+                availToggle.setSelected(true);
+                availToggle.setText("Available");
+                statusLabel.setText("Status: Available");
+            } else {
+                availToggle.setSelected(false);
+                availToggle.setText("Unavailable");
+                statusLabel.setText("Status: Unavailable");
+            }
+            availToggle.addActionListener(e -> {
+                boolean available = availToggle.isSelected();
+                controller.setCounselorAvailability(user.getId(), available);
+                availToggle.setText(available ? "Available" : "Unavailable");
+                statusLabel.setText("Status: " + (available ? "Available" : "Unavailable"));
+            });
+            innerPanel.add(availToggle);
+            innerPanel.add(statusLabel);
+            availCard.add(innerPanel, BorderLayout.CENTER);
+        }
         // Main content area
         contentPanel = new JPanel(new BorderLayout());
         add(contentPanel, BorderLayout.CENTER);
-
         // Feature cards grid
         JPanel grid = new JPanel(new GridLayout(2, 3, 30, 30));
         grid.setBackground(Color.WHITE);
         grid.setBorder(BorderFactory.createEmptyBorder(20, 30, 30, 30));
-
+        // Add availability toggle as first card for counselors
+        if (user.getRole().equals("Counselor") && availCard != null) grid.add(availCard);
         // Add feature cards based on permissions
         if (user.canManageCounselors()) grid.add(featureCard("Staff Management", "Manage all staff members", "Staff Management", () -> showStaffPanel(user)));
         if (user.canManageAppointments() || user.canBookAppointments()) grid.add(featureCard("Appointments", "Manage all appointments", "Manage Appointments", () -> showAppointmentPanel(user)));
-        if (user.canManageCounselors()) grid.add(featureCard("Counselors", "Manage counselor information", "Manage Counselors", () -> showCounselorPanel(user)));
         if (user.canManageFeedback() || user.getRole().equals("Receptionist") || user.getRole().equals("Counselor")) grid.add(featureCard("Feedback", "Manage all feedback", "Manage Feedback", () -> showFeedbackPanel(user)));
         if (user.canViewAllData()) grid.add(featureCard("Reports", "Generate system reports", "Generate Reports", () -> showReportsPanel(user)));
         if (user.getRole().equals("Counselor")) grid.add(featureCard("Generate Report", "View your statistics report", "Generate Report", () -> showReportsPanel(user)));
         if (user.canViewSchedule()) grid.add(featureCard("Schedule", "View all schedules", "View Schedule", () -> showSchedulePanel(user)));
-
         add(grid, BorderLayout.SOUTH);
+        pack();
     }
 
     private JPanel featureCard(String title, String desc, String btnText, Runnable onClick) {
@@ -454,6 +512,8 @@ public class Dashboard extends JFrame {
             int row = table.getSelectedRow();
             if (row == -1) return;
             int id = (int) model.getValueAt(row, 0);
+            int confirm = JOptionPane.showConfirmDialog(panel, "Are you sure you want to delete this staff member?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
+            if (confirm != JOptionPane.YES_OPTION) return;
             staffDAO.deleteStaff(id);
             refreshStaffTable(model, role);
         });

@@ -8,6 +8,7 @@ import encryption.Encryptor;
 
 public class StaffDAO {
     public StaffDAO() {
+        // (Removed: TEMP drop Counselors table)
         try (Connection conn = DBConnection.getConnection()) {
             DatabaseMetaData dbm = conn.getMetaData();
             ResultSet tables = dbm.getTables(null, null, "COUNSELORS", null);
@@ -88,12 +89,18 @@ public class StaffDAO {
         return list;
     }
 
+    // Helper to check if a password is already SHA-256 hashed
+    private boolean isHashedPassword(String password) {
+        return password != null && password.matches("[a-fA-F0-9]{64}");
+    }
+
     public void addStaff(User user) {
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement("INSERT INTO Counselors VALUES (?, ?, ?, ?, ?, ?)");) {
             ps.setInt(1, user.getId());
             ps.setString(2, user.getName());
-            ps.setString(3, Encryptor.hashPassword(user.getPassword()));
+            String pw = user.getPassword();
+            ps.setString(3, isHashedPassword(pw) ? pw : Encryptor.hashPassword(pw));
             if (user instanceof Counselor) {
                 Counselor c = (Counselor) user;
                 ps.setString(4, c.getSpecialization());
@@ -116,7 +123,8 @@ public class StaffDAO {
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement("UPDATE Counselors SET name=?, password=?, specialization=?, available=?, role=? WHERE id=?")) {
             ps.setString(1, user.getName());
-            ps.setString(2, Encryptor.hashPassword(user.getPassword()));
+            String pw = user.getPassword();
+            ps.setString(2, isHashedPassword(pw) ? pw : Encryptor.hashPassword(pw));
             if (user instanceof Counselor) {
                 Counselor c = (Counselor) user;
                 ps.setString(3, c.getSpecialization());
