@@ -8,6 +8,13 @@ import java.util.*;
 import javax.swing.table.DefaultTableModel;
 import main.dao.StaffDAO;
 import main.dao.AppointmentDAO;
+import main.dao.FeedbackDAO;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class Dashboard extends JFrame {
     private final Color purple = new Color(120, 80, 255);
@@ -23,6 +30,7 @@ public class Dashboard extends JFrame {
     // In-memory staff lists for demo
     private StaffDAO staffDAO = new StaffDAO();
     private AppointmentDAO appointmentDAO = new AppointmentDAO();
+    private FeedbackDAO feedbackDAO = new FeedbackDAO();
 
     private JPanel contentPanel;
 
@@ -81,6 +89,7 @@ public class Dashboard extends JFrame {
         if (user.canManageCounselors()) grid.add(featureCard("Counselors", "Manage counselor information", "Manage Counselors", () -> showCounselorPanel(user)));
         if (user.canManageFeedback() || user.getRole().equals("Receptionist") || user.getRole().equals("Counselor")) grid.add(featureCard("Feedback", "Manage all feedback", "Manage Feedback", () -> showFeedbackPanel(user)));
         if (user.canViewAllData()) grid.add(featureCard("Reports", "Generate system reports", "Generate Reports", () -> showReportsPanel(user)));
+        if (user.getRole().equals("Counselor")) grid.add(featureCard("Generate Report", "View your statistics report", "Generate Report", () -> showReportsPanel(user)));
         if (user.canViewSchedule()) grid.add(featureCard("Schedule", "View all schedules", "View Schedule", () -> showSchedulePanel(user)));
 
         add(grid, BorderLayout.SOUTH);
@@ -211,10 +220,129 @@ public class Dashboard extends JFrame {
     }
     private void showReportsPanel(User user) {
         contentPanel.removeAll();
-        contentPanel.add(new JLabel("Reports panel coming soon..."), BorderLayout.CENTER);
+        JPanel reportPanel = new JPanel(new BorderLayout());
+        String[] columns = {"Counselor", "Total Appointments", "Completed", "Upcoming", "Avg. Rating", "Feedback Count"};
+        javax.swing.table.DefaultTableModel model = new javax.swing.table.DefaultTableModel(columns, 0) {
+            public boolean isCellEditable(int r, int c) { return false; }
+        };
+        JTable table = new JTable(model);
+        if (user.getRole().equals("Admin")) {
+            java.util.List<User> counselors = staffDAO.getStaffByRole("Counselor");
+            for (User u : counselors) {
+                String name = u.getName();
+                int total = appointmentDAO.countAppointmentsForCounselor(name);
+                int completed = appointmentDAO.countCompletedAppointmentsForCounselor(name);
+                int upcoming = appointmentDAO.countUpcomingAppointmentsForCounselor(name);
+                double avgRating = feedbackDAO.averageRatingForCounselor(name);
+                int feedbackCount = feedbackDAO.countFeedbackForCounselor(name);
+                model.addRow(new Object[]{name, total, completed, upcoming, String.format("%.2f", avgRating), feedbackCount});
+            }
+            reportPanel.add(new JLabel("Counselor Statistics Report"), BorderLayout.NORTH);
+            reportPanel.add(new JScrollPane(table), BorderLayout.CENTER);
+            JButton pdfBtn = new JButton("Save as PDF");
+            pdfBtn.addActionListener(e -> saveReportAsPDF(model));
+            JPanel btnPanel = new JPanel();
+            btnPanel.add(pdfBtn);
+            reportPanel.add(btnPanel, BorderLayout.SOUTH);
+        } else if (user.getRole().equals("Counselor")) {
+            String name = user.getName();
+            int total = appointmentDAO.countAppointmentsForCounselor(name);
+            int completed = appointmentDAO.countCompletedAppointmentsForCounselor(name);
+            int upcoming = appointmentDAO.countUpcomingAppointmentsForCounselor(name);
+            double avgRating = feedbackDAO.averageRatingForCounselor(name);
+            int feedbackCount = feedbackDAO.countFeedbackForCounselor(name);
+            model.addRow(new Object[]{name, total, completed, upcoming, String.format("%.2f", avgRating), feedbackCount});
+            reportPanel.add(new JLabel("My Statistics Report"), BorderLayout.NORTH);
+            reportPanel.add(new JScrollPane(table), BorderLayout.CENTER);
+        } else {
+            reportPanel.add(new JLabel("Reports not available for this role."), BorderLayout.CENTER);
+        }
+        contentPanel.add(reportPanel, BorderLayout.CENTER);
         contentPanel.revalidate();
         contentPanel.repaint();
     }
+
+    // Add a stub for PDF export (to be implemented with PDFBox/iText)
+    private void saveReportAsPDF(javax.swing.table.DefaultTableModel model) {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Save Report as PDF");
+        fileChooser.setFileFilter(new FileNameExtensionFilter("PDF Files", "pdf"));
+        int userSelection = fileChooser.showSaveDialog(this);
+        if (userSelection != JFileChooser.APPROVE_OPTION) return;
+        String filePath = fileChooser.getSelectedFile().getAbsolutePath();
+        if (!filePath.toLowerCase().endsWith(".pdf")) filePath += ".pdf";
+        try (PDDocument doc = new PDDocument()) {
+            PDPage page = new PDPage(PDRectangle.LETTER);
+            doc.addPage(page);
+            PDPageContentStream content = new PDPageContentStream(doc, page);
+            float margin = 50;
+            float yStart = 730;
+            float tableWidth = page.getMediaBox().getWidth() - 2 * margin;
+            int cols = model.getColumnCount();
+            int rows = model.getRowCount() + 1; // +1 for header
+            float rowHeight = 25;
+            float tableHeight = rowHeight * rows;
+            float colWidth = tableWidth / cols;
+            float cellMargin = 5f;
+            float y = yStart;
+
+            // Title
+            content.setFont(PDType1Font.HELVETICA_BOLD, 16);
+            content.beginText();
+            content.newLineAtOffset(margin, y);
+            content.showText("Counselor Statistics Report");
+            content.endText();
+            y -= 30;
+
+            // Draw table grid
+            // Horizontal lines
+            for (int i = 0; i <= rows; i++) {
+                content.moveTo(margin, y - i * rowHeight);
+                content.lineTo(margin + tableWidth, y - i * rowHeight);
+            }
+            // Vertical lines
+            for (int i = 0; i <= cols; i++) {
+                content.moveTo(margin + i * colWidth, y);
+                content.lineTo(margin + i * colWidth, y - tableHeight);
+            }
+            content.setStrokingColor(0, 0, 0);
+            content.stroke();
+
+            // Write header row
+            content.setFont(PDType1Font.HELVETICA_BOLD, 12);
+            float textY = y - 18;
+            for (int col = 0; col < cols; col++) {
+                String text = model.getColumnName(col);
+                float textX = margin + col * colWidth + cellMargin;
+                content.beginText();
+                content.newLineAtOffset(textX, textY);
+                content.showText(text);
+                content.endText();
+            }
+
+            // Write data rows
+            content.setFont(PDType1Font.HELVETICA, 12);
+            for (int row = 0; row < model.getRowCount(); row++) {
+                textY = y - rowHeight * (row + 2) + 7;
+                for (int col = 0; col < cols; col++) {
+                    Object val = model.getValueAt(row, col);
+                    String text = val != null ? val.toString() : "";
+                    float textX = margin + col * colWidth + cellMargin;
+                    content.beginText();
+                    content.newLineAtOffset(textX, textY);
+                    content.showText(text);
+                    content.endText();
+                }
+            }
+            content.close();
+            doc.save(filePath);
+            JOptionPane.showMessageDialog(this, "PDF saved to: " + filePath, "Success", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Failed to save PDF: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     private void showSchedulePanel(User user) {
         contentPanel.removeAll();
         JPanel panel = new JPanel(new BorderLayout());
