@@ -4,6 +4,7 @@ import main.db.DBConnection;
 import main.model.Feedback;
 import java.sql.*;
 import java.util.*;
+import encryption.Encryptor;
 
 public class FeedbackDAO {
     public FeedbackDAO() {
@@ -22,7 +23,7 @@ public class FeedbackDAO {
                         String counselor = appts.getString("counselor");
                         String date = appts.getString("date");
                         int rating = 1 + (i % 5);
-                        String comments = "Feedback for completed appointment " + i;
+                        String comments = Encryptor.encrypt("Feedback for completed appointment " + i);
                         insert.setInt(1, i);
                         insert.setString(2, student);
                         insert.setString(3, counselor);
@@ -53,7 +54,7 @@ public class FeedbackDAO {
                     rs.getString("counselor"),
                     rs.getString("date"),
                     rs.getInt("rating"),
-                    rs.getString("comments")
+                    Encryptor.decrypt(rs.getString("comments"))
                 ));
             }
         } catch (SQLException e) { e.printStackTrace(); }
@@ -73,7 +74,7 @@ public class FeedbackDAO {
                         rs.getString("counselor"),
                         rs.getString("date"),
                         rs.getInt("rating"),
-                        rs.getString("comments")
+                        Encryptor.decrypt(rs.getString("comments"))
                     ));
                 }
             }
@@ -89,7 +90,7 @@ public class FeedbackDAO {
             ps.setString(3, f.getCounselorName());
             ps.setString(4, f.getDate());
             ps.setInt(5, f.getRating());
-            ps.setString(6, f.getComments());
+            ps.setString(6, Encryptor.encrypt(f.getComments()));
             ps.executeUpdate();
         } catch (SQLException e) { e.printStackTrace(); }
     }
@@ -101,7 +102,7 @@ public class FeedbackDAO {
             ps.setString(2, f.getCounselorName());
             ps.setString(3, f.getDate());
             ps.setInt(4, f.getRating());
-            ps.setString(5, f.getComments());
+            ps.setString(5, Encryptor.encrypt(f.getComments()));
             ps.setInt(6, f.getId());
             ps.executeUpdate();
         } catch (SQLException e) { e.printStackTrace(); }
@@ -113,6 +114,30 @@ public class FeedbackDAO {
             ps.setInt(1, id);
             ps.executeUpdate();
         } catch (SQLException e) { e.printStackTrace(); }
+    }
+
+    public double averageRatingForCounselor(String counselorName) {
+        double avg = 0.0;
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT AVG(rating) FROM Feedback WHERE counselor=?")) {
+            ps.setString(1, counselorName);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) avg = rs.getDouble(1);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return avg;
+    }
+
+    public int countFeedbackForCounselor(String counselorName) {
+        int count = 0;
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM Feedback WHERE counselor=?")) {
+            ps.setString(1, counselorName);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) count = rs.getInt(1);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return count;
     }
 }
  

@@ -4,6 +4,7 @@ import main.db.DBConnection;
 import main.model.*;
 import java.sql.*;
 import java.util.*;
+import encryption.Encryptor;
 
 public class StaffDAO {
     public StaffDAO() {
@@ -14,15 +15,15 @@ public class StaffDAO {
                 // Table does not exist, create and insert dummy data
                 try (Statement st = conn.createStatement()) {
                     st.executeUpdate("CREATE TABLE Counselors (id INT PRIMARY KEY, name VARCHAR(100), password VARCHAR(100), specialization VARCHAR(100), available BOOLEAN, role VARCHAR(20))");
-                    st.executeUpdate("INSERT INTO Counselors VALUES (300001, 'Dr. Smith', 'counselor123', 'Anxiety', true, 'Counselor')");
-                    st.executeUpdate("INSERT INTO Counselors VALUES (300002, 'Dr. Johnson', 'counselor456', 'Depression', true, 'Counselor')");
-                    st.executeUpdate("INSERT INTO Counselors VALUES (300003, 'Dr. Williams', 'counselor789', 'Stress', false, 'Counselor')");
-                    st.executeUpdate("INSERT INTO Counselors VALUES (300004, 'Dr. Brown', 'counselor321', 'Relationships', true, 'Counselor')");
-                    st.executeUpdate("INSERT INTO Counselors VALUES (300005, 'Dr. Lee', 'counselor654', 'Career', true, 'Counselor')");
-                    st.executeUpdate("INSERT INTO Counselors VALUES (200001, 'Alice Front', 'reception789', '', true, 'Receptionist')");
-                    st.executeUpdate("INSERT INTO Counselors VALUES (200002, 'Bob Desk', 'reception456', '', true, 'Receptionist')");
-                    st.executeUpdate("INSERT INTO Counselors VALUES (200003, 'Carol Greet', 'reception123', '', true, 'Receptionist')");
-                    st.executeUpdate("INSERT INTO Counselors VALUES (100001, 'John Admin', 'admin123', '', true, 'Admin')");
+                    st.executeUpdate("INSERT INTO Counselors VALUES (300001, 'Dr. Smith', '" + Encryptor.hashPassword("counselor123") + "', 'Anxiety', true, 'Counselor')");
+                    st.executeUpdate("INSERT INTO Counselors VALUES (300002, 'Dr. Johnson', '" + Encryptor.hashPassword("counselor456") + "', 'Depression', true, 'Counselor')");
+                    st.executeUpdate("INSERT INTO Counselors VALUES (300003, 'Dr. Williams', '" + Encryptor.hashPassword("counselor789") + "', 'Stress', false, 'Counselor')");
+                    st.executeUpdate("INSERT INTO Counselors VALUES (300004, 'Dr. Brown', '" + Encryptor.hashPassword("counselor321") + "', 'Relationships', true, 'Counselor')");
+                    st.executeUpdate("INSERT INTO Counselors VALUES (300005, 'Dr. Lee', '" + Encryptor.hashPassword("counselor654") + "', 'Career', true, 'Counselor')");
+                    st.executeUpdate("INSERT INTO Counselors VALUES (200001, 'Alice Front', '" + Encryptor.hashPassword("reception789") + "', '', true, 'Receptionist')");
+                    st.executeUpdate("INSERT INTO Counselors VALUES (200002, 'Bob Desk', '" + Encryptor.hashPassword("reception456") + "', '', true, 'Receptionist')");
+                    st.executeUpdate("INSERT INTO Counselors VALUES (200003, 'Carol Greet', '" + Encryptor.hashPassword("reception123") + "', '', true, 'Receptionist')");
+                    st.executeUpdate("INSERT INTO Counselors VALUES (100001, 'John Admin', '" + Encryptor.hashPassword("admin123") + "', '', true, 'Admin')");
                 }
             }
         } catch (SQLException e) {
@@ -92,7 +93,7 @@ public class StaffDAO {
              PreparedStatement ps = conn.prepareStatement("INSERT INTO Counselors VALUES (?, ?, ?, ?, ?, ?)");) {
             ps.setInt(1, user.getId());
             ps.setString(2, user.getName());
-            ps.setString(3, user.getPassword());
+            ps.setString(3, Encryptor.hashPassword(user.getPassword()));
             if (user instanceof Counselor) {
                 Counselor c = (Counselor) user;
                 ps.setString(4, c.getSpecialization());
@@ -115,7 +116,7 @@ public class StaffDAO {
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement("UPDATE Counselors SET name=?, password=?, specialization=?, available=?, role=? WHERE id=?")) {
             ps.setString(1, user.getName());
-            ps.setString(2, user.getPassword());
+            ps.setString(2, Encryptor.hashPassword(user.getPassword()));
             if (user instanceof Counselor) {
                 Counselor c = (Counselor) user;
                 ps.setString(3, c.getSpecialization());

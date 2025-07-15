@@ -102,4 +102,40 @@ public class AppointmentDAO {
             ps.executeUpdate();
         } catch (SQLException e) { e.printStackTrace(); }
     }
+
+    public int countAppointmentsForCounselor(String counselorName) {
+        int count = 0;
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM Appointments WHERE counselor=?")) {
+            ps.setString(1, counselorName);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) count = rs.getInt(1);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return count;
+    }
+
+    public int countCompletedAppointmentsForCounselor(String counselorName) {
+        int count = 0;
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM Appointments WHERE counselor=? AND status='Completed'")) {
+            ps.setString(1, counselorName);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) count = rs.getInt(1);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return count;
+    }
+
+    public int countUpcomingAppointmentsForCounselor(String counselorName) {
+        int count = 0;
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM Appointments WHERE counselor=? AND status='Scheduled'")) {
+            ps.setString(1, counselorName);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) count = rs.getInt(1);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return count;
+    }
 }
