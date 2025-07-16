@@ -123,7 +123,17 @@ public class App {
             User user = userDAO.authenticateUser(id, password);
             if (user != null) {
                 dispose();
-                SwingUtilities.invokeLater(() -> new Dashboard(user).setVisible(true));
+                SwingUtilities.invokeLater(() -> {
+                    Dashboard dashboard = new Dashboard(user);
+                    GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().setFullScreenWindow(dashboard);
+                    // Add ESC key binding to exit
+                    dashboard.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("ESCAPE"), "EXIT");
+                    dashboard.getRootPane().getActionMap().put("EXIT", new AbstractAction() {
+                        public void actionPerformed(java.awt.event.ActionEvent e) {
+                            System.exit(0);
+                        }
+                    });
+                });
             } else {
                 statusLabel.setText("Login failed. Try again.");
             }
